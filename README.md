@@ -1,4 +1,4 @@
-Creación de arbol genealogico por metodologóa ABR
+Desarrollo de software para un arbol genealógico aplicando metodología ABR
 (Aprendizaje Basado en Retos)
 
 Programas utilizados:
