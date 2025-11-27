@@ -1,11 +1,11 @@
 #include <iostream>
-
+#include <locale.h>
 using namespace std;
 
-// Definición de tamaño máximo para las cadenas 
-#define MAX_STR_LEN 30
+#define MAX_STR_LEN 64
 
-// ESTRUCTURA DEL NODO 
+int next_member_id = 1;
+
 struct Nodo {
     char id[MAX_STR_LEN];
     char nombre[MAX_STR_LEN];
@@ -14,32 +14,34 @@ struct Nodo {
     char etnia[MAX_STR_LEN];
     Nodo* padre;
     Nodo* madre;
+    Nodo* hijoPrimero;
+    Nodo* siguienteHermano;
+    bool visitado; 
 };
 
-// FUNCIONES ESENCIALES Y AUXILIARES
 
-void limpiarBuffer() { 
-    // Limpieza simple del buffer de entrada después de cin
-    cin.ignore(MAX_STR_LEN, '\n');
+void limpiarBuffer() {
+    cin.ignore(10000, '\n');
 }
 
 void obtenerLinea(char buffer[]) {
-    // Simula getline: Lee una línea completa y limpia el buffer
-    cin.get(buffer, MAX_STR_LEN, '\n'); 
-    cin.ignore(MAX_STR_LEN, '\n'); 
+    cin.getline(buffer, MAX_STR_LEN);
+    if (cin.fail()) {
+        cin.clear();
+        limpiarBuffer();
+        buffer[0] = '\0';
+    }
 }
 
-// Función auxiliar para comparar cadenas (sustituye a <cstring>::strcmp)
 bool compararCadenas(const char* a, const char* b) {
     int i = 0;
     while (a[i] != '\0' && b[i] != '\0') {
         if (a[i] != b[i]) return false;
         i++;
     }
-    return a[i] == b[i]; 
+    return a[i] == b[i];
 }
 
-// Función auxiliar para copiar cadenas (sustituye a <cstring>::strcpy)
 void copiarCadena(char* destino, const char* origen) {
     int i = 0;
     while ((destino[i] = origen[i]) != '\0') {
@@ -47,169 +49,319 @@ void copiarCadena(char* destino, const char* origen) {
     }
 }
 
-// Función para imprimir todos los detalles de un miembro
-void imprimirDetalles(Nodo* nodo) {
-    cout << "---------------------------------\n";
-    cout << "ID: " << nodo->id << endl;
-    cout << "Nombre: " << nodo->titulo << " " << nodo->nombre << endl;
-    cout << "Nacimiento: " << nodo->fechaNacimiento << endl;
-    cout << "Etnia: " << nodo->etnia << endl;
-    cout << "---------------------------------\n";
+
+void intToChar(int n, char buffer[]) {
+    if (n == 0) {
+        buffer[0] = '0';
+        buffer[1] = '\0';
+        return;
+    }
+    char temp[MAX_STR_LEN];
+    int i = 0;
+    while (n > 0) {
+        temp[i++] = (n % 10) + '0';
+        n /= 10;
+    }
+    int j = 0;
+    while (i > 0) buffer[j++] = temp[--i];
+    buffer[j] = '\0';
 }
 
-// Función para inicializar un nuevo nodo
-Nodo* crearNodo(const char* i, const char* n, const char* fn, const char* t, const char* e) {
+// crear e imprimir
+
+Nodo* crearNodo(const char* n, const char* fn, const char* t, const char* e) {
     Nodo* nodo = new Nodo();
-    copiarCadena(nodo->id, i);
+    intToChar(next_member_id++, nodo->id);
     copiarCadena(nodo->nombre, n);
     copiarCadena(nodo->fechaNacimiento, fn);
     copiarCadena(nodo->titulo, t);
     copiarCadena(nodo->etnia, e);
-    nodo->padre = NULL;
-    nodo->madre = NULL;
+    nodo->padre = nullptr;
+    nodo->madre = nullptr;
+    nodo->hijoPrimero = nullptr;
+    nodo->siguienteHermano = nullptr;
+    nodo->visitado = false;
     return nodo;
 }
 
-// ÚNICA FUNCIÓN DE BÚSQUEDA 
-Nodo* buscarNodo(Nodo* nodo, const char* nombreBuscar) {
-    if (nodo == NULL) return NULL;
-    
-    // Búsqueda simplificada: debe coincidir el nombre exacto
-    if (compararCadenas(nodo->nombre, nombreBuscar)) {
-        return nodo;
-    }
-
-    Nodo* encontrado = buscarNodo(nodo->padre, nombreBuscar);
-    if (encontrado != NULL) return encontrado;
-
-    return buscarNodo(nodo->madre, nombreBuscar);
+void imprimirDetalles(Nodo* nodo) {
+    if (nodo == nullptr) return;
+    cout << "---------------------------------\n";
+    cout << "ID: " << nodo->id << "\n";
+    cout << "Nombre: " << nodo->titulo << " " << nodo->nombre << "\n";
+    cout << "Nacimiento: " << nodo->fechaNacimiento << "\n";
+    cout << "Etnia: " << nodo->etnia << "\n";
+    if (nodo->padre) cout << "Padre: " << nodo->padre->nombre << "\n";
+    if (nodo->madre) cout << "Madre: " << nodo->madre->nombre << "\n";
 }
 
+// ------------------ BÃºsqueda (usa visitado para evitar ciclos) ------------------
 
-// 1. FUNCIONALIDAD PRINCIPAL: AGREGAR MIEMBRO
-void agregarMiembro(Nodo* RAIZ) {
-    char nId[MAX_STR_LEN], nNombre[MAX_STR_LEN], nFechaNac[MAX_STR_LEN];
-    char nTitulo[MAX_STR_LEN], nEtnia[MAX_STR_LEN], nombreAncestro[MAX_STR_LEN];
-    char relacion[2];
-    
-    cout << "\n--- 1. AGREGAR NUEVO MIEMBRO ---\n";
-    
-    cout << "ID: "; obtenerLinea(nId);
-    cout << "Nombre: "; obtenerLinea(nNombre);
-    cout << "Nacimiento: "; obtenerLinea(nFechaNac);
-    cout << "Titulo: "; obtenerLinea(nTitulo);
-    cout << "Etnia: "; obtenerLinea(nEtnia);
+Nodo* buscarNodoRec(Nodo* nodo, const char* nombreBuscar) {
+    if (nodo == NULL) return NULL;
+    if (nodo->visitado) return NULL;
+    nodo->visitado = true;
 
-    Nodo* nuevoNodo = crearNodo(nId, nNombre, nFechaNac, nTitulo, nEtnia);
-    
-    cout << "Ancestro: "; obtenerLinea(nombreAncestro);
-    Nodo* ancestro = buscarNodo(RAIZ, nombreAncestro);
+    if (compararCadenas(nodo->nombre, nombreBuscar)) return nodo;
 
-    if (ancestro == NULL) {
-        cout << "Error: Ancestro no encontrado. Miembro no insertado.\n"; 
-        delete nuevoNodo; return;
+    Nodo* encontrado = buscarNodoRec(nodo->hijoPrimero, nombreBuscar);
+    if (encontrado) return encontrado;
+
+    encontrado = buscarNodoRec(nodo->siguienteHermano, nombreBuscar);
+    if (encontrado) return encontrado;
+
+    encontrado = buscarNodoRec(nodo->padre, nombreBuscar);
+    if (encontrado) return encontrado;
+
+    encontrado = buscarNodoRec(nodo->madre, nombreBuscar);
+    if (encontrado) return encontrado;
+
+    return NULL;
+}
+
+void limpiarVisitadosRec(Nodo* nodo) {
+    if (nodo == NULL) return;
+    if (!nodo->visitado) return;
+    nodo->visitado = false;
+    limpiarVisitadosRec(nodo->hijoPrimero);
+    limpiarVisitadosRec(nodo->siguienteHermano);
+    limpiarVisitadosRec(nodo->padre);
+    limpiarVisitadosRec(nodo->madre);
+}
+
+Nodo* buscarNodo(Nodo* raiz, const char* nombreBuscar) {
+    Nodo* res = buscarNodoRec(raiz, nombreBuscar);
+    limpiarVisitadosRec(raiz);
+    return res;
+}
+
+// Funciones para agregar con modulos?
+
+// Agrega nuevoNodo como hijo del progenitor 
+void agregarHijoAProgenitor(Nodo* progenitor, Nodo* nuevoNodo) {
+    if (progenitor->hijoPrimero == NULL) {
+        progenitor->hijoPrimero = nuevoNodo;
+    } else {
+        Nodo* temp = progenitor->hijoPrimero;
+        while (temp->siguienteHermano != NULL) temp = temp->siguienteHermano;
+        temp->siguienteHermano = nuevoNodo;
     }
+}
 
-    cout << "Conectar a [P]adre/[M]adre: "; cin >> relacion; limpiarBuffer();
-    
-    // Lógica de Inserción Simplificada (Usando puntero a puntero conceptual)
-    Nodo** punteroDestino = NULL; 
-    char opcion = relacion[0];
-
-    if (opcion == 'P' || opcion == 'p') {
-        punteroDestino = &ancestro->padre;
-    } else if (opcion == 'M' || opcion == 'm') {
-        punteroDestino = &ancestro->madre;
-    }
-    
-    if (punteroDestino == NULL) {
-        cout << "Error: Opcion no valida.\n";
+// Agregar como hijo: 
+void agregarComoHijo(Nodo* raiz, Nodo* nuevoNodo, const char* nombreProgenitor, char rol) {
+    Nodo* progenitor = buscarNodo(raiz, nombreProgenitor);
+    if (progenitor == NULL) {
+        cout << "error progenitor '" << nombreProgenitor << "' no encontrado\n";
         delete nuevoNodo;
         return;
     }
-
-    if (*punteroDestino == NULL) {
-        *punteroDestino = nuevoNodo;
-        cout << nNombre << " agregado a " << ancestro->nombre << ".\n";
+    if (rol == 'P' || rol == 'p') {
+        if (nuevoNodo->padre == NULL) {
+            nuevoNodo->padre = progenitor;
+            agregarHijoAProgenitor(progenitor, nuevoNodo);
+            cout << "exito agregado como hijo (padre: " << progenitor->nombre << ") [ID: " << nuevoNodo->id << "]\n";
+        } else {
+            cout << "error el miembro ya tiene padre\n";
+            delete nuevoNodo;
+        }
+    } else if (rol == 'M' || rol == 'm') {
+        if (nuevoNodo->madre == NULL) {
+            nuevoNodo->madre = progenitor;
+            agregarHijoAProgenitor(progenitor, nuevoNodo);
+            cout << "exito agregado como hijo (madre: " << progenitor->nombre << ") [ID: " << nuevoNodo->id << "]\n";
+        } else {
+            cout << "error el miembro ya tiene madre\n";
+            delete nuevoNodo;
+        }
     } else {
-        cout << "Error: Posicion ocupada por " << (*punteroDestino)->nombre << ".\n";
+        cout << "error rol invalido\n";
         delete nuevoNodo;
     }
 }
 
-// 2. FUNCIONALIDAD RESTAURADA: MOSTRAR MIEMBROS
-void listarDetalles(Nodo* nodo) {
-    if (nodo != NULL) {
-        imprimirDetalles(nodo); 
-        listarDetalles(nodo->padre); 
-        listarDetalles(nodo->madre);
+// Agregar como progenitor: nuevoNodo se asigna como padre/madre de 'hijo'
+void agregarComoProgenitor(Nodo* raiz, Nodo* nuevoNodo, const char* nombreHijo, char rol) {
+    Nodo* hijo = buscarNodo(raiz, nombreHijo);
+    if (hijo == NULL) {
+        cout << "error hijo '" << nombreHijo << "' no encontrado\n";
+        delete nuevoNodo;
+        return;
     }
+    if (rol == 'P' || rol == 'p') {
+        if (hijo->padre == NULL) {
+            hijo->padre = nuevoNodo;
+            cout << "exitoso agregado como padre de " << hijo->nombre << " [ID: " << nuevoNodo->id << "]\n";
+        } else {
+            cout << "error " << hijo->nombre << " ya tiene padre: " << hijo->padre->nombre << "\n";
+            delete nuevoNodo;
+        }
+    } else if (rol == 'M' || rol == 'm') {
+        if (hijo->madre == NULL) {
+            hijo->madre = nuevoNodo;
+            cout << "exito agregado como madre de " << hijo->nombre << " [ID: " << nuevoNodo->id << "]\n";
+        } else {
+            cout << "error: " << hijo->nombre << " ya tiene madre: " << hijo->madre->nombre << "\n";
+            delete nuevoNodo;
+        }
+    } else {
+        cout << "error el rol es invalido \n";
+        delete nuevoNodo;
+    }
+}
+
+// FunciÃ³n principal de agregar 
+
+void agregarMiembro(Nodo* raiz) {
+    char nNombre[MAX_STR_LEN], nFechaNac[MAX_STR_LEN];
+    char nTitulo[MAX_STR_LEN], nEtnia[MAX_STR_LEN];
+    char opcionRel[MAX_STR_LEN], nombreRelacionado[MAX_STR_LEN], rolRelacion[4];
+
+    cout << "\n--- AGREGAR NUEVO MIEMBRO ---\n";
+    cout << "Nombre: "; obtenerLinea(nNombre);
+    if (nNombre[0] == '\0') { cout << "Nnombre vacio \n"; return; }
+    cout << "fecha de nacimiento: "; obtenerLinea(nFechaNac);
+    cout << "titulo (Don/DoÃ±a): "; obtenerLinea(nTitulo);
+    cout << "etnia: "; obtenerLinea(nEtnia);
+
+    Nodo* nuevoNodo = crearNodo(nNombre, nFechaNac, nTitulo, nEtnia);
+
+    cout << "\nselecciona: [H] hijo@  |  [P] padre o madre\n";
+    cout << "Opcion (H/P): "; obtenerLinea(opcionRel);
+    char tipo = opcionRel[0];
+
+    if (tipo == 'H' || tipo == 'h') {
+        cout << "nombre del antecesor existente: "; obtenerLinea(nombreRelacionado);
+        cout << "indica si es 'P' (padre) o 'M' (madre): "; obtenerLinea(rolRelacion);
+        agregarComoHijo(raiz, nuevoNodo, nombreRelacionado, rolRelacion[0]);
+    } else if (tipo == 'P' || tipo == 'p') {
+        cout << "nombre del hijo existente: "; obtenerLinea(nombreRelacionado);
+        cout << "indica si sera 'P' (padre) o 'M' (madre): "; obtenerLinea(rolRelacion);
+        agregarComoProgenitor(raiz, nuevoNodo, nombreRelacionado, rolRelacion[0]);
+    } else {
+        cout << "Opcion incorrecta \n";
+        delete nuevoNodo;
+    }
+}
+
+// VisualizaciÃ³n del Ã¡rbol
+
+void mostrarArbolRecursivo(Nodo* nodo, int nivel, const char* prefijo) {
+    if (nodo == NULL) return;
+    if (nodo->visitado) return;
+    nodo->visitado = true;
+
+    for (int i = 0; i < nivel; ++i) cout << "    ";
+    cout << prefijo << nodo->titulo << " " << nodo->nombre
+         << " (" << nodo->fechaNacimiento << ") [ID:" << nodo->id << "]\n";
+
+// Mostrar hijos
+    if (nodo->hijoPrimero != NULL) {
+        mostrarArbolRecursivo(nodo->hijoPrimero, nivel + 1, "H: ");
+    }
+// Mostrar padre y madre
+    if (nodo->padre != NULL) {
+        mostrarArbolRecursivo(nodo->padre, nivel + 1, "P: ");
+    }
+    if (nodo->madre != NULL) {
+        mostrarArbolRecursivo(nodo->madre, nivel + 1, "M: ");
+    }
+//mostrar hermanos
+    if (nodo->siguienteHermano != NULL) {
+        mostrarArbolRecursivo(nodo->siguienteHermano, nivel, "");
+    }
+}
+
+void visualizarArbol(Nodo* RAIZ) {
+    cout << "\n--- ARBOL GENEALOGICO (VISUAL) ---\n";
+    mostrarArbolRecursivo(RAIZ, 0, "RAIZ: ");
+    limpiarVisitadosRec(RAIZ); // limpiar 
+}
+
+// Listado completo (usa visitado) 
+
+void listarDetallesRec(Nodo* nodo) {
+    if (nodo == NULL) return;
+    if (nodo->visitado) return;
+    nodo->visitado = true;
+
+    imprimirDetalles(nodo);
+    listarDetallesRec(nodo->padre);
+    listarDetallesRec(nodo->madre);
+    listarDetallesRec(nodo->hijoPrimero);
+    listarDetallesRec(nodo->siguienteHermano);
 }
 
 void mostrarMiembros(Nodo* RAIZ) {
-    cout << "\n--- 2. LISTA COMPLETA DE MIEMBROS ---\n";
-    listarDetalles(RAIZ);
+    cout << "\n----- LISTA COMPLETA DE MIEMBROS -----\n";
+    listarDetallesRec(RAIZ);
+    limpiarVisitadosRec(RAIZ);
 }
 
-// 3. FUNCIONALIDAD RESTAURADA: BUSCAR MIEMBRO
+//  Funciones de bÃºsqueda por menÃº 
+
 void buscarMiembro(Nodo* RAIZ) {
     char nombreBuscar[MAX_STR_LEN];
-    cout << "\n--- 3. BUSCAR MIEMBRO ---\n";
-    cout << "Nombre a buscar: ";
+    cout << "\n----- BUSCAR MIEMBRO -----\n";
+    cout << "nombre para buscar : ";
     obtenerLinea(nombreBuscar);
-
+    if (nombreBuscar[0] == '\0') { cout << "debes ingresar un nombre\n"; return; }
     Nodo* resultado = buscarNodo(RAIZ, nombreBuscar);
-
     if (resultado != NULL) {
-        cout << "\n¡Miembro Encontrado!\n";
+        cout << "miembro encontrado:\n";
         imprimirDetalles(resultado);
     } else {
-        cout << "\nMiembro no encontrado.\n";
+        cout << "no se encuentra al mienbro \n";
     }
 }
 
-// CREACIÓN DEL ÁRBOL INICIAL Y MAIN
+// ejmplod de Ã¡rbol inicial
+
 Nodo* crearArbolBorjaLoyolaInca() {
-    Nodo* FranciscoBorja = crearNodo("B1", "Francisco de Borja", "1510", "Don", "Virreinal");
-    Nodo* Carlos = crearNodo("M2.1", "Carlos de Borja", "1540", "Don", "Mestizo");
-    
-    FranciscoBorja->padre = Carlos; 
-    
-    return FranciscoBorja;
+    Nodo* Francisco = crearNodo("FRANCISCO", "1510", "Don", "Virreinal");
+    Nodo* Juana = crearNodo("JUANA", "1520", "DoÃ±a", "Inca");
+    // relacion simple inicial
+    Francisco->madre = Juana;
+    return Francisco;
 }
 
-int main() {
-    Nodo* RAIZ = crearArbolBorjaLoyolaInca(); 
-    int opcion;
+// menu
 
-    cout << "ADVERTENCIA: La busqueda y la insercion requieren el nombre exacto." << endl;
+int main() {
+    setlocale(LC_ALL, "spanish");
+    Nodo* RAIZ = crearArbolBorjaLoyolaInca();
+
+    int opcion = 0;
+    cout << "  SISTEMA DE ARBOL GENEALOGICO - Familia Borja-Loyola-Inca\n";
+    cout << "  NOTA: usa nombres exactos para la busqueda\n";
 
     do {
-        cout << "\n==============================\n";
-        cout << " ARBOL GENEALOGICO COMPLETO\n";
-        cout << "==============================\n";
+        cout << "\nMENU PRINCIPAL\n";
         cout << "1. Agregar Miembro\n";
-        cout << "2. Mostrar Miembros\n";
+        cout << "2. Mostrar Todos los Miembros\n";
         cout << "3. Buscar Miembro\n";
-        cout << "4. Salir\n";
+        cout << "4. Visualizar Arbol Genealogico\n";
+        cout << "5. Salir\n";
         cout << "Seleccione una opcion: ";
-        
-        if (!(cin >> opcion)) { 
-            cin.clear(); limpiarBuffer(); opcion = 0; 
-        } else { 
-            cout << "\n"; 
+
+        if (!(cin >> opcion)) {
+            cin.clear();
+            limpiarBuffer();
+            opcion = 0;
+        } else {
+            limpiarBuffer();
         }
 
         switch (opcion) {
             case 1: agregarMiembro(RAIZ); break;
             case 2: mostrarMiembros(RAIZ); break;
             case 3: buscarMiembro(RAIZ); break;
-            
-            case 4: cout << "Saliendo del programa.\n"; break; 
-            
-            default: if (opcion != 0) cout << "Opcion no valida.\n"; break;
+            case 4: visualizarArbol(RAIZ); break;
+            case 5: cout << "Hasta pronto\n"; break;
+            default:
+                if (opcion != 0) cout << "fallaste vuelve a intentarlo \n";
         }
-    } while (opcion != 4);
+    } while (opcion != 5);
 
     return 0;
 }
