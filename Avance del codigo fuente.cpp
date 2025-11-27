@@ -6,6 +6,7 @@ using namespace std;
 
 int next_member_id = 1;
 
+//estructura del nodo 
 struct Nodo {
     char id[MAX_STR_LEN];
     char nombre[MAX_STR_LEN];
@@ -19,11 +20,12 @@ struct Nodo {
     bool visitado; 
 };
 
-
+//limpiador del teclado 
 void limpiarBuffer() {
     cin.ignore(10000, '\n');
 }
 
+// paa leer el texto
 void obtenerLinea(char buffer[]) {
     cin.getline(buffer, MAX_STR_LEN);
     if (cin.fail()) {
@@ -33,6 +35,8 @@ void obtenerLinea(char buffer[]) {
     }
 }
 
+//funciones
+//comparar las cadaenas caracter por caracter 
 bool compararCadenas(const char* a, const char* b) {
     int i = 0;
     while (a[i] != '\0' && b[i] != '\0') {
@@ -42,6 +46,7 @@ bool compararCadenas(const char* a, const char* b) {
     return a[i] == b[i];
 }
 
+//copia una cadena a otra
 void copiarCadena(char* destino, const char* origen) {
     int i = 0;
     while ((destino[i] = origen[i]) != '\0') {
@@ -49,7 +54,7 @@ void copiarCadena(char* destino, const char* origen) {
     }
 }
 
-
+//convierte de entero a texto
 void intToChar(int n, char buffer[]) {
     if (n == 0) {
         buffer[0] = '0';
@@ -69,6 +74,7 @@ void intToChar(int n, char buffer[]) {
 
 // crear e imprimir
 
+//construye un nuevo mienbro de la familia 
 Nodo* crearNodo(const char* n, const char* fn, const char* t, const char* e) {
     Nodo* nodo = new Nodo();
     intToChar(next_member_id++, nodo->id);
@@ -84,6 +90,7 @@ Nodo* crearNodo(const char* n, const char* fn, const char* t, const char* e) {
     return nodo;
 }
 
+//informacion del miembro 
 void imprimirDetalles(Nodo* nodo) {
     if (nodo == nullptr) return;
     cout << "---------------------------------\n";
@@ -95,8 +102,9 @@ void imprimirDetalles(Nodo* nodo) {
     if (nodo->madre) cout << "Madre: " << nodo->madre->nombre << "\n";
 }
 
-// ------------------ Búsqueda (usa visitado para evitar ciclos) ------------------
+// Búsqueda
 
+//revursiva
 Nodo* buscarNodoRec(Nodo* nodo, const char* nombreBuscar) {
     if (nodo == NULL) return NULL;
     if (nodo->visitado) return NULL;
@@ -365,3 +373,4 @@ int main() {
 
     return 0;
 }
+
