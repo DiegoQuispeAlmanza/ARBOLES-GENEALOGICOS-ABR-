@@ -1,20 +1,16 @@
 #include <iostream>
 #include <locale.h>
 #include <cstdio>
-#include <cstring> 
+#include <cstring>
 
 using namespace std;
 
 #define MAX_STR_LEN 64
 int next_member_id = 1;
 
-// FUNCIONES 
-
-// Limpiador del teclado
 void limpiarBuffer() {
     cin.ignore(10000, '\n');
 }
-
 
 void obtenerLinea(char buffer[]) {
     cin.getline(buffer, MAX_STR_LEN);
@@ -25,7 +21,6 @@ void obtenerLinea(char buffer[]) {
     }
 }
 
-// Compara las cadenas caracter por caracter
 bool compararCadenas(const char* a, const char* b) {
     int i = 0;
     while (a[i] != '\0' && b[i] != '\0') {
@@ -35,7 +30,6 @@ bool compararCadenas(const char* a, const char* b) {
     return a[i] == b[i];
 }
 
-// Copia una cadena a otra cadena
 void copiarCadena(char* destino, const char* origen) {
     int i = 0;
     while ((destino[i] = origen[i]) != '\0') {
@@ -43,7 +37,6 @@ void copiarCadena(char* destino, const char* origen) {
     }
 }
 
-// Convierte de entero a texto
 void intToChar(int n, char buffer[]) {
     if (n == 0) {
         buffer[0] = '0';
@@ -61,13 +54,11 @@ void intToChar(int n, char buffer[]) {
     buffer[j] = '\0';
 }
 
-//  ESTRUCTURA DEL NODO 
-
 struct Nodo {
     char id[MAX_STR_LEN];
     char nombre[MAX_STR_LEN];
     char fechaNacimiento[MAX_STR_LEN];
-    char titulo[MAX_STR_LEN]; // Almacenara el tema de don o doña 
+    char titulo[MAX_STR_LEN];
     char etnia[MAX_STR_LEN];
     
     Nodo* padre;
@@ -78,8 +69,6 @@ struct Nodo {
     bool visitado; 
 };
 
-//  FUNCIONES CORE DEL GRAFO 
-
 Nodo* crearNodo(const char* n, const char* fn, const char* t, const char* e) {
     Nodo* nodo = new Nodo();
     intToChar(next_member_id++, nodo->id); 
@@ -87,16 +76,16 @@ Nodo* crearNodo(const char* n, const char* fn, const char* t, const char* e) {
     copiarCadena(nodo->fechaNacimiento, fn);
     copiarCadena(nodo->titulo, t);
     copiarCadena(nodo->etnia, e);
-    nodo->padre = nullptr;
-    nodo->madre = nullptr;
-    nodo->hijoPrimero = nullptr;
-    nodo->siguienteHermano = nullptr;
+    nodo->padre = NULL;
+    nodo->madre = NULL;
+    nodo->hijoPrimero = NULL;
+    nodo->siguienteHermano = NULL;
     nodo->visitado = false;
     return nodo;
 }
 
 void imprimirDetalles(Nodo* nodo) {
-    if (nodo == nullptr) return;
+    if (nodo == NULL) return;
     cout << "---------------------------------\n";
     cout << "ID: " << nodo->id << "\n";
     cout << "Nombre: " << nodo->titulo << " " << nodo->nombre << "\n";
@@ -231,7 +220,7 @@ void agregarMiembro(Nodo* raiz) {
     cout << "nombre: "; obtenerLinea(nNombre);
     if (nNombre[0] == '\0') { cout << "nombre vacio\n"; return; }
     cout << "fecha de nacimiento: "; obtenerLinea(nFechaNac);
-    cout << "titulo (don/doña): "; obtenerLinea(nTitulo); 
+    cout << "titulo (don/do?a): "; obtenerLinea(nTitulo); 
     cout << "etnia: "; obtenerLinea(nEtnia);
 
     Nodo* nuevoNodo = crearNodo(nNombre, nFechaNac, nTitulo, nEtnia);
@@ -254,9 +243,7 @@ void agregarMiembro(Nodo* raiz) {
     }
 }
 
-// VISUALIZACION DEL ARBOL 
-
-// Muestra el arbol de forma recursiva 
+// Visualizacion recursiva pura
 void mostrarArbolRecursivo(Nodo* nodo, int nivel) {
     if (nodo == NULL) return;
     if (nodo->visitado) return;
@@ -273,7 +260,7 @@ void mostrarArbolRecursivo(Nodo* nodo, int nivel) {
     cout << nodo->titulo << " " << nodo->nombre
               << " (" << nodo->fechaNacimiento << ") [ID:" << nodo->id << "]\n";
 
-    // Recorre la lista de hijos
+    // Recorre todos los hijos
     Nodo* hijoActual = nodo->hijoPrimero;
     while (hijoActual != NULL) {
         mostrarArbolRecursivo(hijoActual, nivel + 1);
@@ -281,14 +268,31 @@ void mostrarArbolRecursivo(Nodo* nodo, int nivel) {
     }
 }
 
-void visualizarArbol(Nodo* RAIZ) {
-    cout << "\n--- arbol genealogico (visual) ---\n";
-    cout << "el arbol se muestra desde los descendientes de la raiz\n";
-    mostrarArbolRecursivo(RAIZ, 0); 
-    limpiarVisitadosRec(RAIZ); 
+// Encuentra el nodo mas alto (la verdadera raiz visual)
+Nodo* encontrarRaizSuperior(Nodo* nodo) {
+    if (nodo == NULL) return NULL;
+    // Mientras tenga padre o madre, subimos
+    while (nodo->padre != NULL || nodo->madre != NULL) {
+        if (nodo->padre != NULL) {
+            nodo = nodo->padre;
+        } else {
+            nodo = nodo->madre;
+        }
+    }
+    return nodo;
 }
 
-//  LISTADO COMPLETO 
+void visualizarArbol(Nodo* nodoInicial) {
+    cout << "\n--- arbol genealogico (visual) ---\n";
+    
+    // Primero buscamos quien es el jefe supremo actual del arbol
+    // (en caso de que hayamos agregado un padre al nodo inicial)
+    Nodo* raizReal = encontrarRaizSuperior(nodoInicial);
+    
+    cout << "el arbol se muestra desde: " << raizReal->nombre << "\n";
+    mostrarArbolRecursivo(raizReal, 0); 
+    limpiarVisitadosRec(raizReal); 
+}
 
 void listarDetallesRec(Nodo* nodo) {
     if (nodo == NULL) return;
@@ -324,36 +328,28 @@ void buscarMiembro(Nodo* RAIZ) {
     }
 }
 
-// EJEMPLO DE ARBOL INICIAL
-
 Nodo* crearArbolBorjaLoyolaInca() {
-    // Usamos 'Don' y 'Doña' directamente
     Nodo* Francisco = crearNodo("FRANCISCO", "1510", "Don", "Virreinal");
-    Nodo* Juana = crearNodo("JUANA", "1520", "Doña", "Inca"); 
+    Nodo* Juana = crearNodo("JUANA", "1520", "Do?a", "Inca"); 
     Nodo* Pedro = crearNodo("PEDRO", "1540", "Don", "Virreinal");
-    Nodo* Maria = crearNodo("MARIA", "1542", "Doña", "Virreinal"); 
+    Nodo* Maria = crearNodo("MARIA", "1542", "Do?a", "Virreinal"); 
     Nodo* Juan = crearNodo("JUAN", "1565", "Don", "Mestizo");
-    Nodo* Ana = crearNodo("ANA", "1568", "Doña", "Mestiza"); 
+    Nodo* Ana = crearNodo("ANA", "1568", "Do?a", "Mestiza"); 
     Nodo* Carlos = crearNodo("CARLOS", "1570", "Don", "Mestizo");
-    Nodo* Nieta = crearNodo("NINA", "1575", "Doña", "Mestiza"); 
+    Nodo* Nieta = crearNodo("NINA", "1575", "Do?a", "Mestiza"); 
 
-    // Conexiones que usamos de ejemplo
     Francisco->madre = Juana;
     agregarHijoAProgenitor(Juana, Francisco); 
 
-    // Agregamos hijos a Francisco
     agregarHijoAProgenitor(Francisco, Pedro);
     agregarHijoAProgenitor(Francisco, Maria);
     
-    // Hijos de Pedro
     agregarHijoAProgenitor(Pedro, Juan);
     agregarHijoAProgenitor(Pedro, Nieta); 
 
-    // Hijos de Maria
     agregarHijoAProgenitor(Maria, Ana);
     agregarHijoAProgenitor(Maria, Carlos);
     
-    // Conexiones de padre/madre para mantener la consistencia
     Pedro->padre = Francisco;
     Maria->padre = Francisco;
 
@@ -366,10 +362,7 @@ Nodo* crearArbolBorjaLoyolaInca() {
     return Francisco; 
 }
 
-// MENU PRINCIPAL 
-
 int main() {
-	
     setlocale(LC_ALL, "Spanish");
     
     Nodo* RAIZ = crearArbolBorjaLoyolaInca();
